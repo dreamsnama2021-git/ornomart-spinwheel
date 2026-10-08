@@ -10,7 +10,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Cinzel+Decorative:wght@400;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
   <style>
-    body { justify-content: flex-start; }
+    /* Login card is centered; the long dashboard starts from the top */
+    body:has(#adminCard:not(.hidden)) { justify-content: flex-start; }
     .admin { max-width: 980px; text-align: left; }
     .admin-head { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
     .admin-head img { width: 54px; }
@@ -44,6 +45,32 @@
     .check input { width: auto; }
     .tag { font-size: 11px; padding: 3px 8px; border-radius: 6px; background: var(--tint); color: var(--blue); white-space: nowrap; }
     #loginCard .sub b { font-family: var(--font-primary); }
+
+    /* Coupon list grouped by category */
+    .section-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; border-bottom: 1px solid var(--line); margin-bottom: 10px; padding-bottom: 8px; }
+    .section-head h2 { border: none; margin: 0; padding: 0; }
+    .cat-group { margin-top: 16px; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+    .cat-title { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: var(--tint); color: var(--blue-dark); font-weight: 700; letter-spacing: 0.5px; }
+    .coupon-item { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-top: 1px solid var(--line); }
+    .swatch { width: 22px; height: 22px; border-radius: 6px; border: 1px solid var(--line); flex: 0 0 auto; }
+    .ci-main { flex: 1; min-width: 0; }
+    .ci-offer { font-weight: 700; color: var(--navy); }
+    .ci-meta { margin-top: 4px; display: flex; flex-wrap: wrap; gap: 6px; font-size: 12px; color: var(--muted); }
+    .ci-actions { display: flex; gap: 8px; flex: 0 0 auto; }
+    .empty { padding: 16px; color: var(--muted); font-size: 14px; }
+    @media (max-width: 560px) {
+      .coupon-item { flex-wrap: wrap; }
+      .ci-actions { width: 100%; justify-content: flex-end; }
+    }
+
+    /* Dialog */
+    dialog { border: none; border-radius: 18px; padding: 0; width: min(520px, calc(100vw - 32px)); box-shadow: 0 24px 60px rgba(27, 31, 75, 0.3); color: var(--navy); }
+    dialog::backdrop { background: rgba(27, 31, 75, 0.45); }
+    dialog form { padding: 22px 24px; }
+    dialog h2 { margin-bottom: 4px; }
+    dialog .row .narrow { flex: 0 0 90px; min-width: 0; }
+    dialog input[type=color] { height: 46px; padding: 4px; cursor: pointer; }
+    .dialog-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px; }
   </style>
 </head>
 <body>
@@ -51,7 +78,7 @@
   <div class="card" id="loginCard">
     <img class="brand-logo" src="assets/logo.png" alt="Ornomart" />
     <h1>Admin Login</h1>
-    <p class="sub">Owner ke liye</p>
+    <p class="sub">For store owners only</p>
     <form id="loginForm">
       <label for="loginEmail">Email</label>
       <input id="loginEmail" type="email" autocomplete="username" placeholder="admin@example.com" />
@@ -74,25 +101,19 @@
     </div>
 
     <section>
-      <h2>1. Coupons (Wheel ke segments)</h2>
-      <p class="hint"><b>Chance</b> = random spin me kitni probability. 0 rakhoge to random me kabhi nahi aayega (sirf jab aap assign karo). Code khaali = "Better luck" type.</p>
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Color</th><th>Label (wheel par)</th><th>Coupon Code</th><th>Chance</th><th></th></tr></thead>
-          <tbody id="couponRows"></tbody>
-        </table>
+      <div class="section-head">
+        <h2>1. Coupons (wheel segments)</h2>
+        <button class="small-btn" id="addCoupon">+ Add Coupon</button>
       </div>
-      <div class="row" style="margin-top:10px">
-        <button class="small-btn ghost" id="addCoupon">+ Add Coupon</button>
-        <button class="small-btn" id="saveCoupons">Save Coupons</button>
-      </div>
+      <p class="hint"><b>Chance</b> = how likely a coupon is on a random spin (0 = only when you assign it).</p>
+      <div id="couponList"></div>
     </section>
 
     <section>
-      <h2>2. Specific user ko coupon do</h2>
-      <p class="hint">Is mobile number wala user jab bhi spin karega, wheel isi coupon par rukega.</p>
+      <h2>2. Assign a coupon to a specific user</h2>
+      <p class="hint">When the user with this mobile number spins, the wheel will stop on this coupon.</p>
       <div class="row">
-        <div><label>Mobile Number</label><input id="asgMobile" maxlength="10" inputmode="numeric" placeholder="10 digit" /></div>
+        <div><label>Mobile Number</label><input id="asgMobile" maxlength="10" inputmode="numeric" placeholder="10-digit number" /></div>
         <div><label>Coupon</label><select id="asgCoupon"></select></div>
         <button class="small-btn" id="addAssign">Assign</button>
       </div>
@@ -105,8 +126,8 @@
     </section>
 
     <section>
-      <h2>3. Agla spin (koi bhi user)</h2>
-      <p class="hint">Jo bhi agla user spin karega (jiska upar assignment nahi hai) usko yeh milega. Ek baar use hone ke baad apne aap clear.</p>
+      <h2>3. Next spin (any user)</h2>
+      <p class="hint">The next user who spins (and has no assignment above) will get this coupon. It clears automatically after one use.</p>
       <div class="row">
         <div><select id="nextSpin"></select></div>
         <button class="small-btn" id="saveNext">Set</button>
@@ -115,9 +136,9 @@
 
     <section>
       <h2>4. Settings</h2>
-      <label class="check"><input type="checkbox" id="oneSpin" /> Ek mobile number se sirf ek baar spin</label>
+      <label class="check"><input type="checkbox" id="oneSpin" /> Allow only one spin per mobile number</label>
       <div class="row" style="margin-top:10px">
-        <div><label>New admin password (khaali chhodo to nahi badlega)</label><input id="newPwd" type="password" autocomplete="new-password" placeholder="Naya password" /></div>
+        <div><label>New admin password (leave empty to keep the current one)</label><input id="newPwd" type="password" autocomplete="new-password" placeholder="New password" /></div>
         <button class="small-btn" id="saveSettings">Save Settings</button>
       </div>
     </section>
@@ -130,12 +151,50 @@
       </div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Time</th><th>Name</th><th>Mobile</th><th>Email</th><th>City</th><th>Coupon</th><th>Code</th><th>How</th></tr></thead>
+          <thead><tr><th>Time</th><th>Name</th><th>Mobile</th><th>Coupon</th><th>Code</th><th>How</th></tr></thead>
           <tbody id="entryRows"></tbody>
         </table>
       </div>
     </section>
   </div>
+
+  <!-- Add / Edit coupon -->
+  <dialog id="couponDialog">
+    <form id="couponForm" method="dialog">
+      <h2 id="couponDialogTitle">Edit Coupon</h2>
+
+      <label for="cfCategory">Category</label>
+      <input id="cfCategory" list="categoryOptions" placeholder="e.g. Category 1" />
+      <datalist id="categoryOptions"></datalist>
+
+      <label for="cfDetails">Offer (shown to the winner) *</label>
+      <input id="cfDetails" required placeholder="e.g. 15% off on Category 1 Jewellery" />
+
+      <label for="cfLabel">Wheel label (short) *</label>
+      <input id="cfLabel" required placeholder="e.g. 15% OFF Category 1" />
+
+      <div class="row">
+        <div>
+          <label for="cfCode">Coupon code</label>
+          <input id="cfCode" placeholder="Leave empty for no coupon" />
+        </div>
+        <div class="narrow">
+          <label for="cfWeight">Chance</label>
+          <input id="cfWeight" type="number" min="0" step="1" />
+        </div>
+        <div class="narrow">
+          <label for="cfColor">Color</label>
+          <input id="cfColor" type="color" />
+        </div>
+      </div>
+
+      <div class="error" id="couponFormError"></div>
+      <div class="dialog-actions">
+        <button type="button" class="small-btn ghost" id="cancelCoupon">Cancel</button>
+        <button type="submit" class="small-btn" id="saveCoupon">Save</button>
+      </div>
+    </form>
+  </dialog>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>

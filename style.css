@@ -208,6 +208,30 @@ input:focus, select:focus {
   color: #fff;
   border-radius: 10px;
 }
+.code-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+.code-row .code { margin-top: 0; }
+.copy-btn {
+  padding: 10px 16px;
+  border-radius: 10px;
+  border: 2px solid var(--blue);
+  background: #fff;
+  color: var(--blue);
+  font-family: var(--font-primary);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 1px;
+  cursor: pointer;
+}
+.copy-btn:hover { background: var(--tint); }
+.note { margin: 10px 0 0; font-size: 12px; color: var(--muted); font-family: Georgia, serif; }
+#myLabel { font-weight: 600; }
 @keyframes pop { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 .footer-link {
   display: inline-block;

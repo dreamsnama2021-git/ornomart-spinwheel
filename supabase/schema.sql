@@ -1,10 +1,12 @@
 -- Ornomart Spin Wheel - Supabase schema
--- Supabase SQL Editor me ek baar run karo (naye project ke liye).
+-- Run this once in the Supabase SQL Editor (for a new project).
 
 -- ============ Tables ============
 create table public.spin_coupons (
   id uuid primary key default gen_random_uuid(),
-  label text not null check (length(trim(label)) > 0),
+  label text not null check (length(trim(label)) > 0),  -- short text drawn on the wheel
+  details text not null default '',                     -- full offer text shown to the winner
+  category text not null default '',                    -- groups coupons in the admin dashboard
   code text not null default '',
   color text not null default '#0047ab',
   weight integer not null default 10 check (weight >= 0),
@@ -32,6 +34,7 @@ create table public.spin_entries (
   city text,
   coupon_id uuid references public.spin_coupons(id) on delete set null,
   coupon_label text,
+  coupon_details text,
   coupon_code text,
   reason text,
   created_at timestamptz not null default now()
@@ -73,7 +76,7 @@ create policy "admin read self" on public.spin_admins for select to authenticate
   using (user_id = (select auth.uid()));
 
 -- ============ Public functions (game page) ============
--- Wheel ke segments: sirf label + color (coupon code nahi)
+-- Wheel segments: label + color only (no coupon codes)
 create or replace function public.spin_get_wheel()
 returns table (id uuid, label text, color text)
 language sql stable security definer set search_path = ''
@@ -81,7 +84,7 @@ as $$
   select c.id, c.label, c.color from public.spin_coupons c order by c.sort, c.created_at;
 $$;
 
--- Form submit par: kya ye mobile khel sakta hai?
+-- On form submit: can this mobile number play?
 create or replace function public.spin_can_play(p_mobile text)
 returns boolean
 language sql stable security definer set search_path = ''
@@ -90,8 +93,8 @@ as $$
       or not exists (select 1 from public.spin_entries where mobile = right(regexp_replace(p_mobile, '\D', '', 'g'), 10));
 $$;
 
--- Spin: coupon server par decide hota hai
--- Priority: 1) mobile assignment  2) next-spin override  3) weight ke hisaab se random
+-- Spin: the coupon is decided on the server
+-- Priority: 1) mobile assignment  2) next-spin override  3) weighted random
 create or replace function public.spin_play(p_name text, p_mobile text, p_email text default null, p_city text default null)
 returns json
 language plpgsql volatile security definer set search_path = ''
@@ -111,7 +114,7 @@ begin
     raise exception 'invalid_mobile';
   end if;
 
-  -- settings row lock: ek saath do spin "next spin" coupon na le jaayein
+  -- Lock the settings row so two simultaneous spins cannot both take the "next spin" coupon
   select * into v_settings from public.spin_settings where id = 1 for update;
 
   if coalesce(v_settings.one_spin_per_mobile, true)
@@ -154,13 +157,29 @@ begin
     raise exception 'no_coupons';
   end if;
 
-  insert into public.spin_entries (name, mobile, email, city, coupon_id, coupon_label, coupon_code, reason)
+  insert into public.spin_entries (name, mobile, email, city, coupon_id, coupon_label, coupon_details, coupon_code, reason)
   values (left(trim(p_name), 100), v_mobile, nullif(left(trim(coalesce(p_email, '')), 200), ''),
-          nullif(left(trim(coalesce(p_city, '')), 100), ''), v_coupon.id, v_coupon.label, v_coupon.code, v_reason);
+          nullif(left(trim(coalesce(p_city, '')), 100), ''), v_coupon.id, v_coupon.label,
+          nullif(v_coupon.details, ''), v_coupon.code, v_reason);
 
-  return json_build_object('id', v_coupon.id, 'label', v_coupon.label, 'code', v_coupon.code);
+  return json_build_object('id', v_coupon.id, 'label', v_coupon.label, 'details', v_coupon.details, 'code', v_coupon.code);
 end;
 $$;
+
+-- Returning user: latest coupon for a mobile number (label + code only, no personal data)
+create or replace function public.spin_my_coupon(p_mobile text)
+returns json
+language sql stable security definer set search_path = ''
+as $$
+  select json_build_object('label', e.coupon_label, 'details', e.coupon_details, 'code', e.coupon_code, 'won_at', e.created_at)
+  from public.spin_entries e
+  where e.mobile = right(regexp_replace(coalesce(p_mobile, ''), '\D', '', 'g'), 10)
+  order by e.created_at desc
+  limit 1;
+$$;
+
+revoke all on function public.spin_my_coupon(text) from public;
+grant execute on function public.spin_my_coupon(text) to anon, authenticated;
 
 revoke all on function public.spin_is_admin() from public, anon;
 revoke all on function public.spin_get_wheel() from public;
@@ -173,14 +192,14 @@ grant execute on function public.spin_play(text, text, text, text) to anon, auth
 
 -- ============ Default data ============
 insert into public.spin_settings (id) values (1);
-insert into public.spin_coupons (label, code, color, weight, sort) values
-  ('10% OFF', 'SAVE10', '#0a3283', 30, 1),
-  ('20% OFF', 'SAVE20', '#ffffff', 20, 2),
-  ('Free Delivery', 'FREEDEL', '#0066cc', 25, 3),
-  ('50% OFF', 'HALF50', '#eaf1fc', 5, 4),
-  ('Better Luck', '', '#0026b5', 15, 5),
-  ('₹100 Cashback', 'CASH100', '#ffffff', 5, 6);
+insert into public.spin_coupons (category, label, details, code, color, weight, sort) values
+  ('Category 1', '15% OFF Category 1',     '15% off on Category 1 Jewellery',         'CAT1-15',    '#0a3283', 10, 1),
+  ('Category 1', '10% OFF MRP Category 1', '10% off on MRP for Category 1 Jewellery', 'CAT1-MRP10', '#ffffff', 10, 2),
+  ('Category 2', '10% OFF Category 2',     '10% off on Category 2 Jewellery',         'CAT2-10',    '#0066cc', 10, 3),
+  ('Category 2', '5% OFF MRP Category 2',  '5% off on MRP for Category 2 Jewellery',  'CAT2-MRP5',  '#eaf1fc', 10, 4),
+  ('Category 3', '5% OFF Category 3',      '5% off on Category 3 Jewellery',          'CAT3-5',     '#0026b5', 10, 5),
+  ('Category 3', '2% OFF MRP Category 3',  '2% off on MRP for Category 3 Jewellery',  'CAT3-MRP2',  '#ffffff', 10, 6);
 
--- ============ Admin banana ============
--- Pehle Supabase dashboard > Authentication > Users > Add user se admin account banao, phir:
--- insert into public.spin_admins (user_id) select id from auth.users where email = 'ADMIN_EMAIL_YAHAN';
+-- ============ Make an admin ============
+-- First create the admin account in Supabase dashboard > Authentication > Users > Add user, then:
+-- insert into public.spin_admins (user_id) select id from auth.users where email = 'ADMIN_EMAIL_HERE';

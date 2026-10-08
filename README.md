@@ -1,37 +1,38 @@
 # Ornomart Spin & Win
 
-User form bharta hai → Spin Wheel khulta hai → wheel jis coupon par rukta hai wahi user ka coupon.
-Kis user ko kaunsa coupon milega, ye owner admin page se decide karta hai.
+The user enters their name and mobile number → the Spin Wheel opens → the coupon the wheel stops on is the user's coupon.
+The store owner decides which user gets which coupon from the admin page.
+Returning users see the coupon they already won.
 
 ## Files
 
-| File | Kaam |
+| File | Purpose |
 |---|---|
-| `index.html`, `app.js` | User page (form + spin wheel) |
-| `admin.html`, `admin.js` | Owner ka admin panel |
+| `index.html`, `app.js` | User page (form + spin wheel + "Your Coupon" for returning users) |
+| `admin.html`, `admin.js` | Owner's admin panel |
 | `common.js` | Shared helpers + Supabase client |
-| `config.js` | Supabase URL aur publishable key |
+| `config.js` | Supabase URL and publishable key |
 | `style.css` | Ornomart theme (Cinzel font, logo colors) |
 | `assets/` | Logo |
-| `supabase/schema.sql` | Database tables, security rules aur spin logic |
+| `supabase/schema.sql` | Database tables, security rules, and spin logic |
 
-## Coupon kaise decide hota hai (server par)
+## How the coupon is decided (on the server)
 
-1. **Specific mobile assignment** – admin ne us number ko jo coupon diya
-2. **Agla spin** – admin ne "next spin" set kiya ho to (ek baar use ke baad clear)
-3. **Chance (weight)** ke hisaab se random
+1. **Specific mobile assignment** – the coupon the admin assigned to that number
+2. **Next spin** – if the admin set a "next spin" coupon (clears after one use)
+3. **Weighted random** – based on each coupon's chance
 
 ## Setup
 
-1. Supabase project me `supabase/schema.sql` SQL Editor se run karo.
-2. Authentication → Users → **Add user** se admin account banao (Auto Confirm on).
-3. Us user ko admin banao:
+1. Run `supabase/schema.sql` in your Supabase project's SQL Editor.
+2. Create the admin account in Authentication → Users → **Add user** (with Auto Confirm on).
+3. Make that user an admin:
    ```sql
    insert into public.spin_admins (user_id) select id from auth.users where email = 'admin@example.com';
    ```
-4. `config.js` me apna Supabase URL aur publishable key daalo.
+4. Put your Supabase URL and publishable key in `config.js`.
 
-## Local chalana
+## Run locally
 
 ```bash
 npx http-server -p 5500 -c-1
@@ -42,5 +43,5 @@ npx http-server -p 5500 -c-1
 
 ## Fonts
 
-- **Cinzel** – Google Fonts se apne aap load hota hai.
-- **Armoresa Aged** – font file `fonts/ArmoresaAged.ttf` (ya `.otf` / `.woff2`) me rakho. Na ho to Cinzel Decorative dikhta hai.
+- **Cinzel** – loaded automatically from Google Fonts.
+- **Armoresa Aged** – place the font file at `fonts/ArmoresaAged.ttf` (or `.otf` / `.woff2`). If it is missing, Cinzel Decorative is used instead.

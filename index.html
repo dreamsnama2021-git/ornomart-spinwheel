@@ -15,19 +15,13 @@
   <div class="card" id="formCard">
     <img class="brand-logo" src="assets/logo.png" alt="Ornomart" />
     <h1>Spin & Win</h1>
-    <p class="sub">Apni details bharo aur wheel ghumao!</p>
+    <p class="sub">Enter your details and spin the wheel!</p>
     <form id="userForm" novalidate>
       <label for="name">Full Name *</label>
-      <input id="name" required placeholder="Aapka naam" />
+      <input id="name" required autocomplete="name" placeholder="Your name" />
 
       <label for="mobile">Mobile Number *</label>
-      <input id="mobile" required inputmode="numeric" maxlength="10" placeholder="10 digit mobile" />
-
-      <label for="email">Email</label>
-      <input id="email" type="email" placeholder="you@example.com" />
-
-      <label for="city">City</label>
-      <input id="city" placeholder="Aapka shehar" />
+      <input id="mobile" required inputmode="numeric" autocomplete="tel" maxlength="10" placeholder="10-digit mobile number" />
 
       <button class="btn" type="submit">Submit & Play ➜</button>
       <div class="error" id="formError"></div>
@@ -38,7 +32,7 @@
   <!-- Step 2: Spin wheel -->
   <div class="card hidden" id="wheelCard">
     <h1 id="hello">Best of luck!</h1>
-    <p class="sub">Spin dabao aur dekho kya milta hai</p>
+    <p class="sub">Tap Spin and see what you win</p>
     <div class="wheel-wrap">
       <div class="pointer"></div>
       <canvas id="wheel" width="720" height="720"></canvas>
@@ -50,9 +44,32 @@
     <div class="result hidden" id="result">
       <h2 id="resultTitle"></h2>
       <div id="resultText"></div>
-      <div class="code hidden" id="resultCode"></div>
+      <div class="code-row hidden" id="resultCodeRow">
+        <div class="code" id="resultCode"></div>
+        <button class="copy-btn" data-copy="resultCode">Copy</button>
+      </div>
+      <p class="note hidden" id="resultSaved">Your coupon has been saved. Visit this page again to see it anytime.</p>
     </div>
     <button class="btn outline hidden" id="newUserBtn">Next User</button>
+  </div>
+
+  <!-- Returning user: previously won coupon -->
+  <div class="card hidden" id="myCard">
+    <img class="brand-logo" src="assets/logo.png" alt="Ornomart" />
+    <h1 id="myHello">Welcome back!</h1>
+    <p class="sub">You have already spun the wheel</p>
+    <div class="result">
+      <h2>Your Coupon</h2>
+      <div id="myLabel"></div>
+      <div class="code-row" id="myCodeRow">
+        <div class="code" id="myCode"></div>
+        <button class="copy-btn" data-copy="myCode">Copy</button>
+      </div>
+      <p class="note hidden" id="myNoCode">No coupon this time.</p>
+      <p class="note" id="myDate"></p>
+      <p class="note" id="myMobile"></p>
+    </div>
+    <button class="btn outline" id="playOtherBtn">Play with another number</button>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>

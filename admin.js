@@ -1,11 +1,10 @@
 const $ = id => document.getElementById(id);
 
-// Local state (Supabase se load)
+// Local state (loaded from Supabase)
 let coupons = [];      // [{id, label, code, color, weight, sort}]
 let assignments = [];  // [{mobile, coupon_id}]
 let settings = { one_spin_per_mobile: true, next_spin_coupon_id: null };
 let entries = [];
-let deletedCouponIds = [];
 
 // ---------- Login ----------
 sb.auth.getSession().then(({ data }) => { if (data.session) openDashboard(); });
@@ -17,7 +16,7 @@ $('loginForm').addEventListener('submit', async e => {
     email: $('loginEmail').value.trim(),
     password: $('pwd').value
   });
-  if (error) return ($('loginError').textContent = 'Email ya password galat hai');
+  if (error) return ($('loginError').textContent = 'Incorrect email or password');
   $('pwd').value = '';
   openDashboard();
 });
@@ -31,7 +30,7 @@ async function openDashboard() {
   const { data: isAdmin } = await sb.rpc('spin_is_admin');
   if (!isAdmin) {
     await sb.auth.signOut();
-    $('loginError').textContent = 'Is account ko admin access nahi hai';
+    $('loginError').textContent = 'This account does not have admin access';
     return;
   }
   $('loginCard').classList.add('hidden');
@@ -68,7 +67,6 @@ async function refresh() {
   assignments = a.data;
   settings = s.data || settings;
   entries = en.data;
-  deletedCouponIds = [];
   renderAll();
 }
 
@@ -80,81 +78,109 @@ function renderAll() {
   $('oneSpin').checked = settings.one_spin_per_mobile;
 }
 
-// ---------- Coupons ----------
+// ---------- Coupons (grouped by category, with Edit / Delete) ----------
+let editingId = null; // null = adding a new coupon
+
+const offerText = c => c.details || c.label;
+const categoryOf = c => (c.category || '').trim() || 'Uncategorized';
+
 function renderCoupons() {
   const total = coupons.reduce((s, c) => s + Math.max(0, Number(c.weight) || 0), 0) || 1;
-  $('couponRows').innerHTML = coupons.map((c, i) => `
-    <tr data-i="${i}">
-      <td><input type="color" data-f="color" value="${escapeHtml(c.color)}" /></td>
-      <td><input data-f="label" value="${escapeHtml(c.label)}" /></td>
-      <td><input data-f="code" value="${escapeHtml(c.code)}" placeholder="(no coupon)" /></td>
-      <td><input type="number" min="0" data-f="weight" value="${Number(c.weight) || 0}" />
-          <span class="pct">${Math.round((Math.max(0, Number(c.weight) || 0) / total) * 100)}%</span></td>
-      <td><button class="small-btn danger" data-del="${i}">✕</button></td>
-    </tr>`).join('');
+  const groups = new Map();
+  coupons.forEach(c => {
+    const key = categoryOf(c);
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(c);
+  });
+  const keys = [...groups.keys()].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+
+  $('couponList').innerHTML = keys.length ? keys.map(key => `
+    <div class="cat-group">
+      <div class="cat-title"><span>${escapeHtml(key)}</span><span class="pct">${groups.get(key).length} coupon${groups.get(key).length > 1 ? 's' : ''}</span></div>
+      ${groups.get(key).map(c => `
+        <div class="coupon-item">
+          <span class="swatch" style="background:${escapeHtml(c.color)}"></span>
+          <div class="ci-main">
+            <div class="ci-offer">${escapeHtml(offerText(c))}</div>
+            <div class="ci-meta">
+              <span class="tag">Wheel: ${escapeHtml(c.label)}</span>
+              <span class="tag">${c.code ? 'Code: ' + escapeHtml(c.code) : 'No code'}</span>
+              <span class="tag">Chance: ${Math.round((Math.max(0, Number(c.weight) || 0) / total) * 100)}%</span>
+            </div>
+          </div>
+          <div class="ci-actions">
+            <button class="small-btn ghost" data-edit="${c.id}">Edit</button>
+            <button class="small-btn danger" data-delete="${c.id}">Delete</button>
+          </div>
+        </div>`).join('')}
+    </div>`).join('') : '<div class="empty">No coupons yet. Click "+ Add Coupon".</div>';
+
+  const cats = [...new Set(coupons.map(c => (c.category || '').trim()).filter(Boolean))];
+  $('categoryOptions').innerHTML = cats.map(c => `<option value="${escapeHtml(c)}"></option>`).join('');
 }
 
-function readCouponRows() {
-  document.querySelectorAll('#couponRows tr').forEach(tr => {
-    const c = coupons[tr.dataset.i];
-    tr.querySelectorAll('[data-f]').forEach(inp => {
-      c[inp.dataset.f] = inp.dataset.f === 'weight' ? Math.max(0, Math.floor(Number(inp.value) || 0)) : inp.value.trim();
-    });
-  });
+function openCouponDialog(coupon) {
+  editingId = coupon ? coupon.id : null;
+  $('couponDialogTitle').textContent = coupon ? 'Edit Coupon' : 'Add Coupon';
+  $('cfCategory').value = coupon?.category || '';
+  $('cfDetails').value = coupon?.details || coupon?.label || '';
+  $('cfLabel').value = coupon?.label || '';
+  $('cfCode').value = coupon?.code || '';
+  $('cfWeight').value = coupon ? Number(coupon.weight) || 0 : 10;
+  $('cfColor').value = coupon?.color || BRAND_COLORS[coupons.length % BRAND_COLORS.length];
+  $('couponFormError').textContent = '';
+  $('couponDialog').showModal();
+  $('cfDetails').focus();
 }
 
-$('couponRows').addEventListener('click', e => {
-  const i = e.target.dataset.del;
-  if (i === undefined) return;
-  readCouponRows();
-  const removed = coupons.splice(Number(i), 1)[0];
-  if (!removed._new) deletedCouponIds.push(removed.id);
-  renderCoupons();
+$('addCoupon').addEventListener('click', () => openCouponDialog(null));
+$('cancelCoupon').addEventListener('click', () => $('couponDialog').close());
+
+$('couponList').addEventListener('click', async e => {
+  const editId = e.target.dataset.edit;
+  const deleteId = e.target.dataset.delete;
+  if (editId) return openCouponDialog(coupons.find(c => c.id === editId));
+  if (!deleteId) return;
+
+  const c = coupons.find(x => x.id === deleteId);
+  if (coupons.length <= 2) return alert('The wheel needs at least 2 coupons. Add another coupon before deleting this one.');
+  const linked = assignments.filter(a => a.coupon_id === deleteId).length;
+  const msg = `Delete "${offerText(c)}"?` + (linked ? `\n\n${linked} user assignment(s) for this coupon will also be removed.` : '');
+  if (!confirm(msg)) return;
+  const { error } = await sb.from('spin_coupons').delete().eq('id', deleteId);
+  if (error) return fail(error);
+  await refresh();
+  toast('Coupon deleted');
 });
 
-$('addCoupon').addEventListener('click', () => {
-  readCouponRows();
-  coupons.push({
-    id: crypto.randomUUID(),
-    _new: true,
-    label: 'New Coupon',
-    code: '',
-    color: BRAND_COLORS[coupons.length % BRAND_COLORS.length],
-    weight: 10
-  });
-  renderCoupons();
-});
+$('couponForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const row = {
+    category: $('cfCategory').value.trim(),
+    details: $('cfDetails').value.trim(),
+    label: $('cfLabel').value.trim(),
+    code: $('cfCode').value.trim(),
+    weight: Math.max(0, Math.floor(Number($('cfWeight').value) || 0)),
+    color: $('cfColor').value
+  };
+  if (!row.details) return ($('couponFormError').textContent = 'Please enter the offer');
+  if (!row.label) return ($('couponFormError').textContent = 'Please enter a short wheel label');
 
-$('saveCoupons').addEventListener('click', async () => {
-  readCouponRows();
-  if (coupons.length < 2) return alert('Kam se kam 2 coupons chahiye');
-  if (coupons.some(c => !c.label)) return alert('Har coupon ka label bharo');
-  if (deletedCouponIds.length && !confirm(`${deletedCouponIds.length} coupon delete honge (unke assignments bhi hat jayenge). Continue?`)) return;
+  $('saveCoupon').disabled = true;
+  const query = editingId
+    ? sb.from('spin_coupons').update(row).eq('id', editingId)
+    : sb.from('spin_coupons').insert({ ...row, sort: Math.max(0, ...coupons.map(c => c.sort || 0)) + 1 });
+  const { error } = await query;
+  $('saveCoupon').disabled = false;
+  if (error) return ($('couponFormError').textContent = 'Error: ' + error.message);
 
-  const btn = $('saveCoupons');
-  btn.disabled = true;
-  try {
-    if (deletedCouponIds.length) {
-      const { error } = await sb.from('spin_coupons').delete().in('id', deletedCouponIds);
-      if (error) throw error;
-    }
-    const rows = coupons.map((c, i) => ({
-      id: c.id, label: c.label, code: c.code, color: c.color, weight: c.weight, sort: i + 1
-    }));
-    const { error } = await sb.from('spin_coupons').upsert(rows);
-    if (error) throw error;
-    await refresh();
-    toast('Coupons saved ✔');
-  } catch (err) {
-    fail(err);
-  } finally {
-    btn.disabled = false;
-  }
+  $('couponDialog').close();
+  await refresh();
+  toast(editingId ? 'Coupon updated ✔' : 'Coupon added ✔');
 });
 
 function renderCouponSelects() {
-  const saved = coupons.filter(c => !c._new);
-  const opts = saved.map(c => `<option value="${c.id}">${escapeHtml(c.label)}${c.code ? ' (' + escapeHtml(c.code) + ')' : ''}</option>`).join('');
+  const opts = coupons.map(c => `<option value="${c.id}">${escapeHtml(offerText(c))}${c.code ? ' (' + escapeHtml(c.code) + ')' : ''}</option>`).join('');
   $('asgCoupon').innerHTML = opts;
   $('nextSpin').innerHTML = '<option value="">— Off (random by chance) —</option>' + opts;
   $('nextSpin').value = settings.next_spin_coupon_id || '';
@@ -165,13 +191,14 @@ $('asgMobile').addEventListener('input', e => { e.target.value = e.target.value.
 
 $('addAssign').addEventListener('click', async () => {
   const m = normalizeMobile($('asgMobile').value);
-  if (m.length !== 10) return alert('10 digit mobile number daalo');
-  if (!$('asgCoupon').value) return alert('Pehle coupons save karo');
+  if (m.length !== 10) return alert('Please enter a valid 10-digit mobile number');
+  if (!$('asgCoupon').value) return alert('Please add a coupon first');
   const { error } = await sb.from('spin_assignments').upsert({ mobile: m, coupon_id: $('asgCoupon').value });
   if (error) return fail(error);
   $('asgMobile').value = '';
+  $('addAssign').textContent = 'Assign';
   await refresh();
-  toast('Assigned ✔');
+  toast('Assignment saved ✔');
 });
 
 function renderAssignments() {
@@ -180,16 +207,29 @@ function renderAssignments() {
     const c = coupons.find(x => x.id === a.coupon_id);
     return `<tr>
       <td>${escapeHtml(a.mobile)}</td>
-      <td>${c ? escapeHtml(c.label) : '<i>deleted</i>'}</td>
-      <td><span class="tag">${played.has(a.mobile) ? 'Spin ho gaya' : 'Pending'}</span></td>
-      <td><button class="small-btn danger" data-unassign="${escapeHtml(a.mobile)}">Remove</button></td>
+      <td>${c ? escapeHtml(offerText(c)) : '<i>deleted</i>'}</td>
+      <td><span class="tag">${played.has(a.mobile) ? 'Spun' : 'Pending'}</span></td>
+      <td style="white-space:nowrap">
+        <button class="small-btn ghost" data-asg-edit="${escapeHtml(a.mobile)}">Edit</button>
+        <button class="small-btn danger" data-unassign="${escapeHtml(a.mobile)}">Delete</button>
+      </td>
     </tr>`;
-  }).join('') : '<tr><td colspan="4" class="pct">Koi assignment nahi</td></tr>';
+  }).join('') : '<tr><td colspan="4" class="pct">No assignments yet</td></tr>';
 }
 
 $('assignRows').addEventListener('click', async e => {
+  const editMobile = e.target.dataset.asgEdit;
+  if (editMobile) {
+    const a = assignments.find(x => x.mobile === editMobile);
+    $('asgMobile').value = a.mobile;
+    $('asgCoupon').value = a.coupon_id;
+    $('addAssign').textContent = 'Update';
+    $('asgCoupon').focus();
+    return;
+  }
   const m = e.target.dataset.unassign;
   if (!m) return;
+  if (!confirm(`Delete the assignment for ${m}?`)) return;
   const { error } = await sb.from('spin_assignments').delete().eq('mobile', m);
   if (error) return fail(error);
   await refresh();
@@ -201,13 +241,13 @@ $('saveNext').addEventListener('click', async () => {
   const { error } = await sb.from('spin_settings').update({ next_spin_coupon_id: id }).eq('id', 1);
   if (error) return fail(error);
   settings.next_spin_coupon_id = id;
-  toast(id ? 'Agla spin set ✔' : 'Off ✔');
+  toast(id ? 'Next spin set ✔' : 'Off ✔');
 });
 
 // ---------- Settings ----------
 $('saveSettings').addEventListener('click', async () => {
   const p = $('newPwd').value;
-  if (p && p.length < 8) return alert('Password kam se kam 8 characters ka rakho');
+  if (p && p.length < 8) return alert('Password must be at least 8 characters');
 
   const { error } = await sb.from('spin_settings').update({ one_spin_per_mobile: $('oneSpin').checked }).eq('id', 1);
   if (error) return fail(error);
@@ -231,25 +271,23 @@ function renderEntries() {
       <td>${new Date(en.created_at).toLocaleString()}</td>
       <td>${escapeHtml(en.name)}</td>
       <td>${escapeHtml(en.mobile)}</td>
-      <td>${escapeHtml(en.email)}</td>
-      <td>${escapeHtml(en.city)}</td>
-      <td>${escapeHtml(en.coupon_label)}</td>
+      <td>${escapeHtml(en.coupon_details || en.coupon_label)}</td>
       <td>${escapeHtml(en.coupon_code)}</td>
       <td><span class="tag">${escapeHtml(reasonText[en.reason] || en.reason)}</span></td>
-    </tr>`).join('') : '<tr><td colspan="8" class="pct">Abhi koi entry nahi</td></tr>';
+    </tr>`).join('') : '<tr><td colspan="6" class="pct">No entries yet</td></tr>';
 }
 
 $('exportCsv').addEventListener('click', () => {
-  const head = ['Time', 'Name', 'Mobile', 'Email', 'City', 'Coupon', 'Code', 'How'];
-  // Excel formula injection se bachne ke liye =,+,-,@ se shuru hone wali values ke aage '
+  const head = ['Time', 'Name', 'Mobile', 'Coupon', 'Code', 'How'];
+  // Prefix values starting with =, +, -, @ with ' to prevent Excel formula injection
   const esc = v => {
     let s = String(v ?? '');
     if (/^[=+\-@]/.test(s)) s = "'" + s;
     return `"${s.replace(/"/g, '""')}"`;
   };
   const csv = [head, ...entries.map(en => [
-    new Date(en.created_at).toLocaleString(), en.name, en.mobile, en.email, en.city,
-    en.coupon_label, en.coupon_code, reasonText[en.reason] || en.reason
+    new Date(en.created_at).toLocaleString(), en.name, en.mobile,
+    en.coupon_details || en.coupon_label, en.coupon_code, reasonText[en.reason] || en.reason
   ])].map(r => r.map(esc).join(',')).join('\n');
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv' }));
@@ -258,7 +296,7 @@ $('exportCsv').addEventListener('click', () => {
 });
 
 $('clearEntries').addEventListener('click', async () => {
-  if (!confirm('Saari entries hamesha ke liye delete ho jayengi. Pehle CSV download kar lo. Pakka delete karna hai?')) return;
+  if (!confirm('All entries will be permanently deleted. Download the CSV first. Are you sure?')) return;
   const { error } = await sb.from('spin_entries').delete().gt('id', 0);
   if (error) return fail(error);
   await refresh();
