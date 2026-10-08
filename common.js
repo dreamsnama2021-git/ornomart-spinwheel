@@ -1,0 +1,21 @@
+// Shared helpers. Data Supabase me hai, coupon server (spin_play function) decide karta hai.
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// Brand palette (logo se) - naye coupons ke liye
+const BRAND_COLORS = ['#0a3283', '#ffffff', '#0047ab', '#eaf1fc', '#0066cc', '#ffffff', '#0026b5', '#eaf1fc'];
+
+function normalizeMobile(m) {
+  return String(m || '').replace(/\D/g, '').slice(-10);
+}
+
+// Light background par navy text, dark par white
+function textColorFor(hex) {
+  const h = String(hex || '').replace('#', '');
+  if (h.length !== 6) return '#ffffff';
+  const [r, g, b] = [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16));
+  return (r * 299 + g * 587 + b * 114) / 1000 > 160 ? '#1b1f4b' : '#ffffff';
+}
+
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+}

@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ornomart Spin & Win</title>
+  <link rel="icon" href="assets/mark.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Cinzel+Decorative:wght@400;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- Step 1: User form -->
+  <div class="card" id="formCard">
+    <img class="brand-logo" src="assets/logo.png" alt="Ornomart" />
+    <h1>Spin & Win</h1>
+    <p class="sub">Apni details bharo aur wheel ghumao!</p>
+    <form id="userForm" novalidate>
+      <label for="name">Full Name *</label>
+      <input id="name" required placeholder="Aapka naam" />
+
+      <label for="mobile">Mobile Number *</label>
+      <input id="mobile" required inputmode="numeric" maxlength="10" placeholder="10 digit mobile" />
+
+      <label for="email">Email</label>
+      <input id="email" type="email" placeholder="you@example.com" />
+
+      <label for="city">City</label>
+      <input id="city" placeholder="Aapka shehar" />
+
+      <button class="btn" type="submit">Submit & Play ➜</button>
+      <div class="error" id="formError"></div>
+    </form>
+    <a class="footer-link" href="admin.html">Admin</a>
+  </div>
+
+  <!-- Step 2: Spin wheel -->
+  <div class="card hidden" id="wheelCard">
+    <h1 id="hello">Best of luck!</h1>
+    <p class="sub">Spin dabao aur dekho kya milta hai</p>
+    <div class="wheel-wrap">
+      <div class="pointer"></div>
+      <canvas id="wheel" width="720" height="720"></canvas>
+      <div class="hub"><img src="assets/mark.png" alt="" /></div>
+    </div>
+    <button class="btn" id="spinBtn">SPIN</button>
+    <div class="error" id="spinError"></div>
+
+    <div class="result hidden" id="result">
+      <h2 id="resultTitle"></h2>
+      <div id="resultText"></div>
+      <div class="code hidden" id="resultCode"></div>
+    </div>
+    <button class="btn outline hidden" id="newUserBtn">Next User</button>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+  <script src="common.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

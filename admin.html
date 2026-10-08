@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ornomart Spin Admin</title>
+  <link rel="icon" href="assets/mark.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Cinzel+Decorative:wght@400;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    body { justify-content: flex-start; }
+    .admin { max-width: 980px; text-align: left; }
+    .admin-head { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+    .admin-head img { width: 54px; }
+    .admin-head h1 { flex: 1; margin: 0; }
+    section { margin-top: 28px; }
+    h2 { font-size: 17px; margin: 0 0 10px; padding-bottom: 8px; border-bottom: 1px solid var(--line); color: var(--blue-dark); letter-spacing: 0.5px; }
+    .hint { font-size: 13px; color: var(--muted); margin: 0 0 12px; font-family: Georgia, serif; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th, td { padding: 8px 6px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: middle; }
+    th { color: var(--muted); font-weight: 600; font-size: 12px; letter-spacing: 0.5px; background: var(--tint-2); }
+    td input, td select { padding: 7px 9px; font-size: 14px; }
+    td input[type=color] { width: 44px; height: 34px; padding: 2px; cursor: pointer; }
+    td input[type=number] { width: 80px; }
+    td:has(input[type=number]) { white-space: nowrap; }
+    .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
+    .row > * { flex: 1; min-width: 160px; }
+    .small-btn {
+      padding: 9px 16px; border: none; border-radius: 8px; cursor: pointer;
+      background: var(--blue); color: #fff; font-family: var(--font-primary); font-weight: 700;
+      font-size: 13px; letter-spacing: 0.5px; flex: 0 0 auto; min-width: 0; text-decoration: none;
+    }
+    .small-btn:hover { background: var(--blue-dark); }
+    .small-btn.danger { background: #fff; color: var(--danger); border: 1px solid #f0c4c4; }
+    .small-btn.danger:hover { background: #fdecec; }
+    .small-btn.ghost { background: var(--tint); color: var(--blue); }
+    .small-btn.ghost:hover { background: #dde8f8; }
+    .table-wrap { overflow-x: auto; }
+    .pct { color: var(--muted); font-size: 12px; }
+    .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--navy); color: #fff; padding: 10px 20px; border-radius: 10px; font-weight: 600; box-shadow: 0 8px 20px rgba(0,0,0,0.2); }
+    .check { display: flex; gap: 8px; align-items: center; font-family: var(--font-primary); }
+    .check input { width: auto; }
+    .tag { font-size: 11px; padding: 3px 8px; border-radius: 6px; background: var(--tint); color: var(--blue); white-space: nowrap; }
+    #loginCard .sub b { font-family: var(--font-primary); }
+  </style>
+</head>
+<body>
+  <!-- Login -->
+  <div class="card" id="loginCard">
+    <img class="brand-logo" src="assets/logo.png" alt="Ornomart" />
+    <h1>Admin Login</h1>
+    <p class="sub">Owner ke liye</p>
+    <form id="loginForm">
+      <label for="loginEmail">Email</label>
+      <input id="loginEmail" type="email" autocomplete="username" placeholder="admin@example.com" />
+      <label for="pwd">Password</label>
+      <input id="pwd" type="password" autocomplete="current-password" placeholder="Password" />
+      <button class="btn">Login</button>
+      <div class="error" id="loginError"></div>
+    </form>
+    <a class="footer-link" href="index.html">← Game page</a>
+  </div>
+
+  <!-- Dashboard -->
+  <div class="card admin hidden" id="adminCard">
+    <div class="admin-head">
+      <img src="assets/mark.png" alt="Ornomart" />
+      <h1>Spin Wheel Admin</h1>
+      <a class="small-btn ghost" href="index.html">Open Game</a>
+      <button class="small-btn ghost" id="refreshBtn">↻ Refresh</button>
+      <button class="small-btn danger" id="logoutBtn">Logout</button>
+    </div>
+
+    <section>
+      <h2>1. Coupons (Wheel ke segments)</h2>
+      <p class="hint"><b>Chance</b> = random spin me kitni probability. 0 rakhoge to random me kabhi nahi aayega (sirf jab aap assign karo). Code khaali = "Better luck" type.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Color</th><th>Label (wheel par)</th><th>Coupon Code</th><th>Chance</th><th></th></tr></thead>
+          <tbody id="couponRows"></tbody>
+        </table>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <button class="small-btn ghost" id="addCoupon">+ Add Coupon</button>
+        <button class="small-btn" id="saveCoupons">Save Coupons</button>
+      </div>
+    </section>
+
+    <section>
+      <h2>2. Specific user ko coupon do</h2>
+      <p class="hint">Is mobile number wala user jab bhi spin karega, wheel isi coupon par rukega.</p>
+      <div class="row">
+        <div><label>Mobile Number</label><input id="asgMobile" maxlength="10" inputmode="numeric" placeholder="10 digit" /></div>
+        <div><label>Coupon</label><select id="asgCoupon"></select></div>
+        <button class="small-btn" id="addAssign">Assign</button>
+      </div>
+      <div class="table-wrap" style="margin-top:12px">
+        <table>
+          <thead><tr><th>Mobile</th><th>Coupon</th><th>Status</th><th></th></tr></thead>
+          <tbody id="assignRows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section>
+      <h2>3. Agla spin (koi bhi user)</h2>
+      <p class="hint">Jo bhi agla user spin karega (jiska upar assignment nahi hai) usko yeh milega. Ek baar use hone ke baad apne aap clear.</p>
+      <div class="row">
+        <div><select id="nextSpin"></select></div>
+        <button class="small-btn" id="saveNext">Set</button>
+      </div>
+    </section>
+
+    <section>
+      <h2>4. Settings</h2>
+      <label class="check"><input type="checkbox" id="oneSpin" /> Ek mobile number se sirf ek baar spin</label>
+      <div class="row" style="margin-top:10px">
+        <div><label>New admin password (khaali chhodo to nahi badlega)</label><input id="newPwd" type="password" autocomplete="new-password" placeholder="Naya password" /></div>
+        <button class="small-btn" id="saveSettings">Save Settings</button>
+      </div>
+    </section>
+
+    <section>
+      <h2>5. Entries (<span id="entryCount">0</span>)</h2>
+      <div class="row" style="margin-bottom:10px">
+        <button class="small-btn" id="exportCsv">Download CSV</button>
+        <button class="small-btn danger" id="clearEntries">Clear All Entries</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Time</th><th>Name</th><th>Mobile</th><th>Email</th><th>City</th><th>Coupon</th><th>Code</th><th>How</th></tr></thead>
+          <tbody id="entryRows"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+  <script src="common.js"></script>
+  <script src="admin.js"></script>
+</body>
+</html>
