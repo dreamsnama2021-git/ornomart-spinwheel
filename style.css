@@ -61,6 +61,13 @@ body {
   background: linear-gradient(90deg, var(--blue-dark), var(--sky), var(--royal));
 }
 .brand-logo { width: 150px; max-width: 55%; display: block; margin: 4px auto 12px; }
+.brand-logo + .tagline {
+  margin: -6px 0 16px;
+  font-family: var(--font-secondary);
+  font-size: 15px;
+  letter-spacing: 1px;
+  color: var(--blue);
+}
 h1 {
   font-family: var(--font-primary);
   font-weight: 700;

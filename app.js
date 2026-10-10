@@ -183,15 +183,34 @@ function drawWheel() {
     ctx.textAlign = 'right';
     ctx.textBaseline = 'middle';
     ctx.fillStyle = textColorFor(c.color);
-    // Long labels wrap onto 2 lines and shrink to fit; truncate with "…" as a last resort
     const maxW = inner * 0.62;
-    const { lines, size: fs } = layoutLabel(ctx, c.label, maxW, n > 8 ? 24 : 28, 15);
-    ctx.font = `700 ${fs}px Cinzel, Georgia, serif`;
-    const lineH = fs * 1.15;
-    lines.forEach((line, li) => {
-      const y = (li - (lines.length - 1) / 2) * lineH;
-      ctx.fillText(fitText(ctx, line, maxW), inner - 22, y);
-    });
+    const x = inner - 22;
+    const offer = String(c.label).trim().match(/^(\d+(?:\.\d+)?\s*%\s*OFF)\s*(.*)$/i);
+    if (offer) {
+      // Highlight "15% OFF" in a big font; the rest ("MRP Category 1") goes smaller underneath
+      const big = offer[1].toUpperCase().replace(/\s+/g, ' ');
+      const small = offer[2];
+      const bigSize = fitSize(ctx, big, maxW, n > 8 ? 34 : 44, 20, 700);
+      const smallSize = small ? fitSize(ctx, small, maxW, n > 8 ? 20 : 25, 14, 700) : 0;
+      const gap = small ? 6 : 0;
+      const total = bigSize + gap + smallSize;
+      const bigY = -total / 2 + bigSize / 2;
+      ctx.font = `700 ${bigSize}px Cinzel, Georgia, serif`;
+      ctx.fillText(big, x, bigY);
+      if (small) {
+        ctx.font = `700 ${smallSize}px Cinzel, Georgia, serif`;
+        ctx.fillText(fitText(ctx, small, maxW), x, bigY + bigSize / 2 + gap + smallSize / 2);
+      }
+    } else {
+      // Other labels wrap onto 2 lines and shrink to fit; truncate with "…" as a last resort
+      const { lines, size: fs } = layoutLabel(ctx, c.label, maxW, n > 8 ? 24 : 28, 15);
+      ctx.font = `700 ${fs}px Cinzel, Georgia, serif`;
+      const lineH = fs * 1.15;
+      lines.forEach((line, li) => {
+        const y = (li - (lines.length - 1) / 2) * lineH;
+        ctx.fillText(fitText(ctx, line, maxW), x, y);
+      });
+    }
     ctx.restore();
   });
 
@@ -204,6 +223,16 @@ function drawWheel() {
     ctx.fillStyle = k % 2 ? '#8fb4ea' : '#ffffff';
     ctx.fill();
   }
+}
+
+// Largest font size (between max and min) at which text fits maxW
+function fitSize(ctx, text, maxW, maxSize, minSize, weight) {
+  let size = maxSize;
+  for (; size > minSize; size--) {
+    ctx.font = `${weight} ${size}px Cinzel, Georgia, serif`;
+    if (ctx.measureText(text).width <= maxW) break;
+  }
+  return size;
 }
 
 // Pick 1 or 2 lines (balanced word split) at the largest font size that fits maxW
