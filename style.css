@@ -237,6 +237,23 @@ input:focus, select:focus {
   cursor: pointer;
 }
 .copy-btn:hover { background: var(--tint); }
+/* Status badge on the returning-user screen (not clickable) */
+.status-active {
+  margin-top: 22px;
+  width: 100%;
+  padding: 14px;
+  border-radius: 12px;
+  border: 2px solid #9fd8b8;
+  background: #e8f7ef;
+  color: var(--success);
+  font-family: var(--font-primary);
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-align: center;
+  cursor: default;
+  user-select: none;
+}
 .note { margin: 10px 0 0; font-size: 12px; color: var(--muted); font-family: Georgia, serif; }
 #myLabel { font-weight: 600; }
 @keyframes pop { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }

@@ -46,6 +46,7 @@ function showMyCoupon(mine) {
   $('myCode').textContent = mine.code || '';
   $('myCodeRow').classList.toggle('hidden', !mine.code);
   $('myNoCode').classList.toggle('hidden', !!mine.code);
+  $('myStatus').classList.toggle('hidden', !mine.code);
   $('myDate').textContent = mine.won_at ? `Won on: ${new Date(mine.won_at).toLocaleString()}` : '';
 }
 
@@ -74,13 +75,6 @@ async function fetchMine(mobile) {
     showMyCoupon(mine);
   } catch (e) { /* offline: keep showing the saved coupon */ }
 })();
-
-$('playOtherBtn').addEventListener('click', () => {
-  clearMine();
-  $('myCard').classList.add('hidden');
-  $('formCard').classList.remove('hidden');
-  $('userForm').reset();
-});
 
 // Copy buttons
 document.addEventListener('click', async e => {
@@ -304,7 +298,6 @@ function showResult(coupon) {
   spinning = false;
   $('spinBtn').classList.add('hidden');
   $('result').classList.remove('hidden');
-  $('newUserBtn').classList.remove('hidden');
   if (coupon.code) {
     $('resultTitle').textContent = 'Congratulations!';
     $('resultText').textContent = `You won: ${coupon.details || coupon.label}`;
@@ -319,5 +312,3 @@ function showResult(coupon) {
   }
 }
 
-// On a shared device (store/kiosk) the next user must not see the previous user's coupon
-$('newUserBtn').addEventListener('click', () => { clearMine(); location.reload(); });
