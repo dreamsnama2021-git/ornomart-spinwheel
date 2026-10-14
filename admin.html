@@ -138,6 +138,10 @@
       <h2>4. Settings</h2>
       <label class="check"><input type="checkbox" id="oneSpin" /> Allow only one spin per mobile number</label>
       <div class="row" style="margin-top:10px">
+        <div><label for="validUntil">Coupons valid until (last day, India time)</label><input id="validUntil" type="date" /></div>
+      </div>
+      <p class="hint" style="margin-top:6px">After this date users see "Coupon Expired" and no new spins are allowed. Leave empty for no end date.</p>
+      <div class="row" style="margin-top:10px">
         <div><label>New admin password (leave empty to keep the current one)</label><input id="newPwd" type="password" autocomplete="new-password" placeholder="New password" /></div>
         <button class="small-btn" id="saveSettings">Save Settings</button>
       </div>

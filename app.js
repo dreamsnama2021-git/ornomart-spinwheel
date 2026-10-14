@@ -9,7 +9,8 @@ const ERRORS = {
   already_played: 'This mobile number has already been used to spin',
   invalid_mobile: 'Please enter a valid 10-digit mobile number',
   invalid_name: 'Please enter a valid name',
-  no_coupons: 'The wheel is not set up yet. Please contact the store.'
+  no_coupons: 'The wheel is not set up yet. Please contact the store.',
+  campaign_ended: 'This offer has ended.'
 };
 function errorText(err) {
   const key = Object.keys(ERRORS).find(k => String(err?.message || '').includes(k));
@@ -22,7 +23,31 @@ async function loadWheel() {
   segments = data || [];
 }
 
+// ---------- Validity date (set by the admin; checked on the server in India time) ----------
+let campaign = { valid_until: null, ended: false };
+const campaignReady = sb.rpc('spin_public_info')
+  .then(({ data }) => { if (data) campaign = data; applyCampaign(); })
+  .catch(() => {});
+
+function formatDate(isoDate) {
+  const [y, m, d] = String(isoDate).split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+function validText() {
+  return campaign.valid_until ? `Valid till ${formatDate(campaign.valid_until)}` : '';
+}
+
+function applyCampaign() {
+  $('resultValid').textContent = validText();
+  $('endedNote').classList.toggle('hidden', !campaign.ended);
+  if (campaign.ended) {
+    $('endedNote').textContent = `This offer ended on ${formatDate(campaign.valid_until)}. Already played? Enter your details to view your coupon.`;
+  }
+  if (!$('myCard').classList.contains('hidden') && lastShown) showMyCoupon(lastShown);
+}
+
 // ---------- Returning user: "Your Coupon" ----------
+let lastShown = null;
 // Remember the won coupon in this browser so it shows up right away on the next visit
 const MY_KEY = 'ornomart_my_coupon';
 function getMine() {
@@ -36,6 +61,7 @@ function clearMine() {
 }
 
 function showMyCoupon(mine) {
+  lastShown = mine;
   $('formCard').classList.add('hidden');
   $('wheelCard').classList.add('hidden');
   $('myCard').classList.remove('hidden');
@@ -47,6 +73,9 @@ function showMyCoupon(mine) {
   $('myCodeRow').classList.toggle('hidden', !mine.code);
   $('myNoCode').classList.toggle('hidden', !!mine.code);
   $('myStatus').classList.toggle('hidden', !mine.code);
+  $('myStatus').classList.toggle('expired', campaign.ended);
+  $('myStatus').textContent = campaign.ended ? '✖ Coupon Expired' : '✔ Coupon Active';
+  $('myValid').textContent = mine.code ? validText() : '';
   $('myDate').textContent = mine.won_at ? `Won on: ${new Date(mine.won_at).toLocaleString()}` : '';
 }
 
@@ -120,6 +149,8 @@ $('userForm').addEventListener('submit', async e => {
       saveMine(full);
       return showMyCoupon(full);
     }
+    await campaignReady;
+    if (campaign.ended) return showError(`This offer ended on ${formatDate(campaign.valid_until)}.`);
     if (segments.length < 2) return showError(ERRORS.no_coupons);
   } catch (err) {
     return showError(errorText(err));
@@ -181,20 +212,23 @@ function drawWheel() {
     const x = inner - 22;
     const offer = String(c.label).trim().match(/^(\d+(?:\.\d+)?\s*%\s*OFF)\s*(.*)$/i);
     if (offer) {
-      // Highlight "15% OFF" in a big font; the rest ("MRP Category 1") goes smaller underneath
+      // Highlight "15% OFF" in a big font; the rest ("Category 1") goes smaller underneath,
+      // wrapping onto 2 lines when it is long ("Diamond & Making Cat 1")
       const big = offer[1].toUpperCase().replace(/\s+/g, ' ');
       const small = offer[2];
       const bigSize = fitSize(ctx, big, maxW, n > 8 ? 34 : 44, 20, 700);
-      const smallSize = small ? fitSize(ctx, small, maxW, n > 8 ? 20 : 25, 14, 700) : 0;
+      const sm = small ? layoutLabel(ctx, small, maxW, n > 8 ? 20 : 24, 15) : { lines: [], size: 0 };
+      const smallLineH = sm.size * 1.1;
       const gap = small ? 6 : 0;
-      const total = bigSize + gap + smallSize;
+      const total = bigSize + gap + sm.lines.length * smallLineH;
       const bigY = -total / 2 + bigSize / 2;
       ctx.font = `700 ${bigSize}px Cinzel, Georgia, serif`;
       ctx.fillText(big, x, bigY);
-      if (small) {
-        ctx.font = `700 ${smallSize}px Cinzel, Georgia, serif`;
-        ctx.fillText(fitText(ctx, small, maxW), x, bigY + bigSize / 2 + gap + smallSize / 2);
-      }
+      ctx.font = `700 ${sm.size}px Cinzel, Georgia, serif`;
+      sm.lines.forEach((line, li) => {
+        const y = bigY + bigSize / 2 + gap + smallLineH * (li + 0.5);
+        ctx.fillText(fitText(ctx, line, maxW), x, y);
+      });
     } else {
       // Other labels wrap onto 2 lines and shrink to fit; truncate with "…" as a last resort
       const { lines, size: fs } = layoutLabel(ctx, c.label, maxW, n > 8 ? 24 : 28, 15);
@@ -304,11 +338,13 @@ function showResult(coupon) {
     $('resultCode').textContent = coupon.code;
     $('resultCodeRow').classList.remove('hidden');
     $('resultSaved').classList.remove('hidden');
+    $('resultValid').classList.remove('hidden');
   } else {
     $('resultTitle').textContent = coupon.label;
     $('resultText').textContent = 'Better luck next time!';
     $('resultCodeRow').classList.add('hidden');
     $('resultSaved').classList.add('hidden');
+    $('resultValid').classList.add('hidden');
   }
 }
 

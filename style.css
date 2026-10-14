@@ -72,7 +72,8 @@ h1 {
   font-family: var(--font-primary);
   font-weight: 700;
   margin: 0 0 4px;
-  font-size: 26px;
+  font-size: clamp(20px, 6vw, 26px);
+  overflow-wrap: break-word;
   letter-spacing: 1px;
   color: var(--navy);
 }
@@ -80,7 +81,8 @@ h1 {
   font-family: var(--font-secondary);
   margin: 0 0 20px;
   color: var(--blue);
-  font-size: 17px;
+  font-size: clamp(14px, 4.2vw, 17px);
+  overflow-wrap: break-word;
 }
 form { text-align: left; }
 label {
@@ -140,7 +142,7 @@ input:focus, select:focus {
 /* Wheel */
 .wheel-wrap {
   position: relative;
-  width: min(360px, 80vw);
+  width: min(360px, 100%);
   aspect-ratio: 1;
   margin: 18px auto 0;
 }
@@ -200,7 +202,9 @@ input:focus, select:focus {
   font-family: var(--font-secondary);
   color: var(--blue);
   font-weight: 400;
-  font-size: 26px;
+  font-size: clamp(18px, 6.2vw, 26px);
+  letter-spacing: 0;
+  overflow-wrap: anywhere;
   margin: 0 0 6px;
 }
 #resultText { font-weight: 600; }
@@ -208,7 +212,9 @@ input:focus, select:focus {
   display: inline-block;
   margin-top: 12px;
   padding: 10px 20px;
-  font-size: 22px;
+  font-size: clamp(17px, 5.5vw, 22px);
+  max-width: 100%;
+  overflow-wrap: anywhere;
   letter-spacing: 3px;
   font-weight: 700;
   background: var(--navy);
@@ -254,6 +260,30 @@ input:focus, select:focus {
   cursor: default;
   user-select: none;
 }
+.status-active.expired {
+  border-color: #f0c4c4;
+  background: #fdecec;
+  color: var(--danger);
+}
+.valid-till {
+  margin: 12px 0 0;
+  font-family: var(--font-primary);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--blue-dark);
+}
+.valid-till:empty { display: none; }
+.ended-note {
+  margin: 0 0 6px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #fdecec;
+  border: 1px solid #f0c4c4;
+  color: var(--danger);
+  font-size: 13px;
+  font-family: Georgia, serif;
+}
 .note { margin: 10px 0 0; font-size: 12px; color: var(--muted); font-family: Georgia, serif; }
 #myLabel { font-weight: 600; }
 @keyframes pop { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
@@ -266,3 +296,14 @@ input:focus, select:focus {
   text-decoration: none;
 }
 .footer-link:hover { color: var(--blue); }
+
+/* Small phones: tighter spacing so nothing overflows the card */
+.card, .result { overflow-wrap: break-word; }
+#resultText, #myLabel { overflow-wrap: anywhere; }
+@media (max-width: 420px) {
+  body { padding: 16px; }
+  .card { padding: 24px 16px; border-radius: 18px; }
+  .result { padding: 16px 12px; }
+  .code { letter-spacing: 2px; padding: 8px 14px; }
+  .copy-btn { padding: 8px 12px; }
+}

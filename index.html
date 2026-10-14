@@ -17,6 +17,7 @@
     <p class="tagline">You Imagine It. We Create It.</p>
     <h1>YOUR LUCK IS ABOUT TO SPARKLE!</h1>
     <p class="sub">Enter your details, spin the wheel and unlock your exclusive reward.</p>
+    <p class="ended-note hidden" id="endedNote"></p>
     <form id="userForm" novalidate>
       <label for="name">Full Name *</label>
       <input id="name" required autocomplete="name" placeholder="Your name" />
@@ -48,6 +49,7 @@
         <div class="code" id="resultCode"></div>
         <button class="copy-btn" data-copy="resultCode">Copy</button>
       </div>
+      <p class="valid-till" id="resultValid"></p>
       <p class="note hidden" id="resultSaved">Your coupon has been saved. Visit this page again to see it anytime.</p>
     </div>
   </div>
@@ -65,6 +67,7 @@
         <div class="code" id="myCode"></div>
         <button class="copy-btn" data-copy="myCode">Copy</button>
       </div>
+      <p class="valid-till" id="myValid"></p>
       <p class="note hidden" id="myNoCode">No coupon this time.</p>
       <p class="note" id="myDate"></p>
       <p class="note" id="myMobile"></p>

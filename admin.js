@@ -76,6 +76,7 @@ function renderAll() {
   renderAssignments();
   renderEntries();
   $('oneSpin').checked = settings.one_spin_per_mobile;
+  $('validUntil').value = settings.valid_until || '';
 }
 
 // ---------- Coupons (grouped by category, with Edit / Delete) ----------
@@ -249,9 +250,11 @@ $('saveSettings').addEventListener('click', async () => {
   const p = $('newPwd').value;
   if (p && p.length < 8) return alert('Password must be at least 8 characters');
 
-  const { error } = await sb.from('spin_settings').update({ one_spin_per_mobile: $('oneSpin').checked }).eq('id', 1);
+  const validUntil = $('validUntil').value || null;
+  const { error } = await sb.from('spin_settings').update({ one_spin_per_mobile: $('oneSpin').checked, valid_until: validUntil }).eq('id', 1);
   if (error) return fail(error);
   settings.one_spin_per_mobile = $('oneSpin').checked;
+  settings.valid_until = validUntil;
 
   if (p) {
     const { error: pErr } = await sb.auth.updateUser({ password: p });

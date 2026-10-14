@@ -17,7 +17,8 @@ create table public.spin_coupons (
 create table public.spin_settings (
   id integer primary key default 1 check (id = 1),
   one_spin_per_mobile boolean not null default true,
-  next_spin_coupon_id uuid references public.spin_coupons(id) on delete set null
+  next_spin_coupon_id uuid references public.spin_coupons(id) on delete set null,
+  valid_until date  -- last day coupons are valid / spins allowed (India time); null = no end date
 );
 
 create table public.spin_assignments (
@@ -117,6 +118,11 @@ begin
   -- Lock the settings row so two simultaneous spins cannot both take the "next spin" coupon
   select * into v_settings from public.spin_settings where id = 1 for update;
 
+  -- No new spins after the validity date (India time)
+  if v_settings.valid_until is not null and (now() at time zone 'Asia/Kolkata')::date > v_settings.valid_until then
+    raise exception 'campaign_ended';
+  end if;
+
   if coalesce(v_settings.one_spin_per_mobile, true)
      and exists (select 1 from public.spin_entries where mobile = v_mobile) then
     raise exception 'already_played';
@@ -178,6 +184,20 @@ as $$
   limit 1;
 $$;
 
+-- Public campaign info for the game page
+create or replace function public.spin_public_info()
+returns json
+language sql stable security definer set search_path = ''
+as $
+  select json_build_object(
+    'valid_until', s.valid_until,
+    'ended', s.valid_until is not null and (now() at time zone 'Asia/Kolkata')::date > s.valid_until
+  )
+  from public.spin_settings s where s.id = 1;
+$;
+revoke all on function public.spin_public_info() from public;
+grant execute on function public.spin_public_info() to anon, authenticated;
+
 revoke all on function public.spin_my_coupon(text) from public;
 grant execute on function public.spin_my_coupon(text) to anon, authenticated;
 
@@ -191,7 +211,7 @@ grant execute on function public.spin_can_play(text) to anon, authenticated;
 grant execute on function public.spin_play(text, text, text, text) to anon, authenticated;
 
 -- ============ Default data ============
-insert into public.spin_settings (id) values (1);
+insert into public.spin_settings (id, valid_until) values (1, date '2026-10-20');
 insert into public.spin_coupons (category, label, details, code, color, weight, sort) values
   ('Category 1', '15% OFF Category 1',     '15% off on Category 1 Jewellery',         'CAT1-15',    '#0a3283', 10, 1),
   ('Category 1', '10% OFF MRP Category 1', '10% off on MRP for Category 1 Jewellery', 'CAT1-MRP10', '#ffffff', 10, 2),
